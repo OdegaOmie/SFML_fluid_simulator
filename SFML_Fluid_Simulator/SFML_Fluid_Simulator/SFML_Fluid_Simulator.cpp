@@ -25,60 +25,33 @@
 #include "Fluid_Sim_2D.h"
 
 
-int main()
-{
 
-    return 0;
+sf::Vector2i getCorinates2D(sf::Vector2f _input, float _cell_width, float _cell_heigth) {
+	int X = _input.x / _cell_width;
+	int Y = _input.y / _cell_heigth;
+	return sf::Vector2i(X, Y);
 }
+
 
 void run_2d() {
 	int sizeX = 500;
 	int sizeY = 500;
-	int _scale = 2;
+	int scale = 2;
+	bool running = true;
 
-	float _cell_width = (sizeX / (sizeX / _scale));
-	float _cell_heigth = (sizeY / (sizeY / _scale));
+	float cell_width = (sizeX / (sizeX / scale));
+	float cell_heigth = (sizeY / (sizeY / scale));
 	// Create the main window 
 	sf::RenderWindow App(sf::VideoMode(sizeX, sizeY, 32), "SFML OpenGL");
 
 	// Create a clock for measuring time elapsed     
 	sf::Clock Clock;
 	//create a font
-	float _dt = 0.0001;
+	float dt = 0.00001;
 
-	sf::Font font;
-	if (!font.loadFromFile("sansation.ttf"))
-	{
-		// error...
-	}
-	sf::Color _col, _zero_col;
-	_zero_col = sf::Color(0, 0, 0, 0);
-	//prepare OpenGL surface for HSR
-	glClearDepth(1.f);
-	glClearColor(0.3f, 0.3f, 0.3f, 0.f);
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//// Setup a perspective projection & Camera position
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	//gluPerspective(90.f, 1.f, 1.f, 300.0f);//fov, aspect, zNear, zFar
-	GLfloat zNear = 0.1f;
-	GLfloat zFar = 255.0f;
-	GLfloat aspect = float(800) / float(600);
-	GLfloat fH = tan(float(90 / 360.0f * 3.14159f)) * zNear;
-	GLfloat fW = fH * aspect;
-	glFrustum(-fW, fW, -fH, fH, zNear, zFar);
+	int variable_shown = 0;
 
-
-
-	bool rotate = true;
-	float angle = 0;
-	bool _run = false;
-
-	int _3d_scale = 1;
-	Fluid_Sim_2D _sim_2D = Fluid_Sim_2D(sizeX / _scale, sizeY / _scale, _cell_width, _scale);
+	Fluid_Sim_2D sim_2D = Fluid_Sim_2D(sizeX / scale, sizeY / scale, cell_width, scale);
 	sf::Vector2f mousePos;
 
 	while (App.isOpen())
@@ -95,44 +68,49 @@ void run_2d() {
 			if ((Event.type == sf::Event::KeyPressed) && (Event.key.code == sf::Keyboard::Escape))
 				App.close();
 		}
-			mousePos = sf::Vector2f(sf::Mouse::getPosition(App).x, sf::Mouse::getPosition(App).y);
-			//Prepare for drawing 
-			// Clear color and depth buffer 
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		mousePos = Vector2f(Mouse::getPosition(App).x, Mouse::getPosition(App).y);
 
-			// Apply some transformations 
-			glMatrixMode(GL_MODELVIEW);
-			glLoadIdentity();
+		bool RMB = Mouse::isButtonPressed(Mouse::Right);
+		bool LMB = Mouse::isButtonPressed(Mouse::Left);
+		bool R = Keyboard::isKeyPressed(Keyboard::R);
+		bool speed = Keyboard::isKeyPressed(Keyboard::Num1);
+		bool pressure = Keyboard::isKeyPressed(Keyboard::Num2);
+		bool density = Keyboard::isKeyPressed(Keyboard::Num3);
+
+		if (speed) {
+			variable_shown = 0;
+		}
+		else if (pressure) {
+			variable_shown = 1;
+		}
+		else if (density) {
+			variable_shown = 2;
+		}
 
 
-			App.clear(sf::Color::Black);
-			if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
-			{
-				int X = mousePos.x / _cell_width;
-				int Y = mousePos.y / _cell_heigth;
-				if (X < sizeX && X > 0 && Y < sizeY && Y > 0)
-				{
-					_sim_2D.addDensity(X, Y);
-				}
-			}
-			if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
-			{
-				int X = mousePos.x / _cell_width;
-				int Y = mousePos.y / _cell_heigth;
-				if (X < sizeX && X > 0 && Y < sizeY && Y > 0)
-				{
-					_sim_2D.addVelocity(X, Y);
-				}
-			}
-			if (_run)
-			{
-				_sim_2D.update(_dt);
-			}
-		App.draw(_sim_2D.getSpriteGeneral(_variable_shown));
+		if (LMB) sim_2D.addDensity(getCorinates2D(mousePos, cell_width, cell_heigth));
+		if (RMB)sim_2D.addPressure(getCorinates2D(mousePos, cell_width, cell_heigth));
+		if (R) sim_2D.reset();
+
+
+
+		if (running)
+		{
+			sim_2D.update(dt);
+		}
+		App.draw(sim_2D.getSpriteGeneral(variable_shown));
 		App.display();
+		std::cout << "LOOP" << std::endl;
 	}
 }
 
 void run_3d() {
 
+}
+
+
+int main()
+{
+	run_2d();
+	return 0;
 }

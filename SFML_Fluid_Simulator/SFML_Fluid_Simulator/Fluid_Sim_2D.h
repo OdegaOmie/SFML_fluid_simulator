@@ -59,13 +59,6 @@ private:
 	std::vector<VolumeData> volume_data_0;
 	std::vector<float> walls;
 	std::vector<float> divergence;
-	// 0 = u
-	// 1 = v
-	// 2 = p
-	// 3 = T
-	// 4 = d
-
-
 
 	sf::Image po_pressure_color;
 	sf::Image neg_pressure_color;
@@ -88,11 +81,11 @@ public:
 	Fluid_Sim_2D(int width, int height, int size, int scale);
 
 
-	void addDensity(int x, int y);
-	void addPressure(int x, int y);
-	void addV(int x, int y);
-	void addU(int x, int y);
-	void addVelocity(int x, int y);
+	void addDensity(sf::Vector2i _input);
+	void addPressure(sf::Vector2i _input);
+	void addV(sf::Vector2i _input);
+	void addU(sf::Vector2i _input);
+	void addVelocity(sf::Vector2i _input);
 
 
 	sf::Color colorGradient(sf::Image &color, float x);
@@ -136,4 +129,6 @@ public:
 	void velocityStep(float _dt);
 
 	void update(float _dt);
+
+	void reset();
 };

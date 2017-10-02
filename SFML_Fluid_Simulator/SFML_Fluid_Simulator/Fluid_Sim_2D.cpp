@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "Fluid_Sim_2D.h"
 
-
-
 Fluid_Sim_2D::Fluid_Sim_2D(int _w, int _h, int _size ,int _scale) : width(_w), height(_h)
 {
 
@@ -17,7 +15,7 @@ Fluid_Sim_2D::Fluid_Sim_2D(int _w, int _h, int _size ,int _scale) : width(_w), h
 		volume_data_0.push_back(VolumeData());
 		volume_data_0[i].setZero();
 		walls.push_back(0.0f);
-		divergence.push_back(0);
+		divergence.push_back(0.0f);
 	}
 	pressure_added_this_frame = false;
 	image.create(width, height , Color::Blue);
@@ -42,9 +40,19 @@ void Fluid_Sim_2D::update(float _dt)
 	densityStep(_dt);
 }
 
-void Fluid_Sim_2D::diffusion(float _dt, int var, float viscosity)
+void Fluid_Sim_2D::reset()
 {
-	float _a = _dt *  viscosity * N_x * N_y;
+	for (int i = 0; i < size; i++) {
+		volume_data[i].setZero();
+		volume_data_0[i].setZero();
+		walls[i] = 0.0f;
+		divergence[i] = 0.0f;
+	}
+}
+
+void Fluid_Sim_2D::diffusion(float _dt, int _var, float _viscosity)
+{
+	float _a = _dt *  _viscosity * N_x * N_y;
 	////DIFFUSION/////
 		float _value;
 		for (int k = 0; k < 10; k++) 
@@ -53,21 +61,21 @@ void Fluid_Sim_2D::diffusion(float _dt, int var, float viscosity)
 			{
 				for (int j = 1; j <= N_y; j++)
 				{
-					set0(i, j, var, (getActual(i, j, var)
+					set0(i, j, _var, (getActual(i, j, _var)
 						+ _a
-						* (get0(i - 1, j, var)
-							+ get0(i + 1, j, var)
-							+ get0(i, j - 1, var)
-							+ get0(i, j + 1, var)))
+						* (get0(i - 1, j, _var)
+							+ get0(i + 1, j, _var)
+							+ get0(i, j - 1, _var)
+							+ get0(i, j + 1, _var)))
 						/ (1+4*_a));
 				}
 			}
-			applyBoundary(var);
+			applyBoundary(_var);
 		}
 
 }
 
-void Fluid_Sim_2D::advection(float _dt, int var)
+void Fluid_Sim_2D::advection(float _dt, int _var)
 {
 
 	////ADVECTION/////
@@ -109,26 +117,22 @@ void Fluid_Sim_2D::advection(float _dt, int var)
 			t1 = y - j0;
 			t0 = 1 - t1;
 
-			setActual(i, j, var,
+			setActual(i, j, _var,
 				s0
-				* (t0 * get0(i0, j0, var)
-					+ t1* get0(i0, j1, var))
+				* (t0 * get0(i0, j0, _var)
+					+ t1* get0(i0, j1, _var))
 				+ s1
-				* (t0 * get0(i1, j0, var)
-					+ t1* get0(i1, j1, var)));
+				* (t0 * get0(i1, j0, _var)
+					+ t1* get0(i1, j1, _var)));
 		}
 	}
-	applyBoundary(var);
+	applyBoundary(_var);
 }
 
 void Fluid_Sim_2D::projection(float _dt)
 {
 	int i, j, k;
 	float h = 1.0 / ((N_y + N_y) / 2);
-
-	
-
-
 	for (i = 1; i <= N_x; i++) {
 		for (j = 1; j <= N_y; j++) {
 			setGradient(i, j, -0.5f*h*(getActual(i + 1, j, 0) - getActual(i - 1, j, 0) +
@@ -183,13 +187,13 @@ sf::Sprite Fluid_Sim_2D::getSpriteGeneral(int var)
 	}
 }
 
-void Fluid_Sim_2D::addDensity(int x, int y)
+void Fluid_Sim_2D::addDensity(sf::Vector2i _input)
 {
-	for (int i = (x - 20); i < (x + 20); i++) {
-		for (int j = (y - 20); j < (y + 20); j++) {
+	for (int i = (_input.x - 20); i < (_input.x + 20); i++) {
+		for (int j = (_input.y - 20); j < (_input.y + 20); j++) {
 			if (i > 0 && i < width && j > 0 && j < height) 
 			{
-				float d = std::sqrt(std::pow(i - x, 2) + std::pow(j - y, 2));
+				float d = std::sqrt(std::pow(i - _input.x, 2) + std::pow(j - _input.y, 2));
 				if (d < 20 / 4) {
 					setActual(i, j, 4, getActual(i, j, 4) + 5);
 				}
@@ -198,10 +202,10 @@ void Fluid_Sim_2D::addDensity(int x, int y)
 	}
 }
 
-void Fluid_Sim_2D::addPressure(int x, int y)
+void Fluid_Sim_2D::addPressure(sf::Vector2i _input)
 {
-	for (int i = (x - 5); i < (x + 5); i++) {
-		for (int j = (y - 5); j < (y + 5); j++) {
+	for (int i = (_input.x - 5); i < (_input.x + 5); i++) {
+		for (int j = (_input.y - 5); j < (_input.y + 5); j++) {
 			if (i > 0 && i < width && j > 0 && j < height)
 			{
 					setActual(i, j, 2, getActual(i, j, 2) + 100.0f);
@@ -211,13 +215,13 @@ void Fluid_Sim_2D::addPressure(int x, int y)
 	}
 }
 
-void Fluid_Sim_2D::addV(int x, int y)
+void Fluid_Sim_2D::addV(sf::Vector2i _input)
 {
-	for (int i = (x - 20); i < (x + 20); i++) {
-		for (int j = (y - 20); j < (y + 20); j++) {
+	for (int i = (_input.x - 20); i < (_input.x + 20); i++) {
+		for (int j = (_input.y - 20); j < (_input.y + 20); j++) {
 			if (i > 0 && i < width && j > 0 && j < height)
 			{
-				float d = std::sqrt(std::pow(i - x, 2) + std::pow(j - y, 2));
+				float d = std::sqrt(std::pow(i - _input.x, 2) + std::pow(j - _input.y, 2));
 				if (d < 20 / 4) 
 				{
 					setActual(i, j, 1, getActual(i, j, 1) + 0.005f);
@@ -227,13 +231,13 @@ void Fluid_Sim_2D::addV(int x, int y)
 	}
 }
 
-void Fluid_Sim_2D::addU(int x, int y)
+void Fluid_Sim_2D::addU(sf::Vector2i _input)
 {
-	for (int i = (x - 20); i < (x + 20); i++) {
-		for (int j = (y - 20); j < (y + 20); j++) {
+	for (int i = (_input.x - 20); i < (_input.x + 20); i++) {
+		for (int j = (_input.y - 20); j < (_input.y + 20); j++) {
 			if (i > 0 && i < width && j > 0 && j < height)
 			{
-				float d = std::sqrt(std::pow(i - x, 2) + std::pow(j - y, 2));
+				float d = std::sqrt(std::pow(i - _input.x, 2) + std::pow(j - _input.y, 2));
 				if (d < 20 / 4) 
 				{
 					setActual(i, j, 0, getActual(i, j, 0) + 0.005f);
@@ -243,13 +247,13 @@ void Fluid_Sim_2D::addU(int x, int y)
 	}
 }
 
-void Fluid_Sim_2D::addVelocity(int x, int y)
+void Fluid_Sim_2D::addVelocity(sf::Vector2i _input)
 {
-	for (int i = (x - 8); i < (x + 8); i++) {
-		for (int j = (y - 8); j < (y + 8); j++) {
+	for (int i = (_input.x - 8); i < (_input.x + 8); i++) {
+		for (int j = (_input.y - 8); j < (_input.y + 8); j++) {
 			if (i > 0 && i < width && j > 0 && j < height)
 			{
-				float d = std::sqrt(std::pow(i - x, 2) + std::pow(j - y, 2));
+				float d = std::sqrt(std::pow(i - _input.x, 2) + std::pow(j - _input.y, 2));
 				if (d < 8 / 4) 
 				{
 					setActual(i, j, 0, getActual(i, j, 0) + 1000000000.0f);
@@ -333,8 +337,6 @@ void Fluid_Sim_2D::boundaryConditionsVVelocity()
 		setActual(N_x + 1, N_y + 1, 1, 0.5f * (getActual(N_x, N_y + 1, 1) + getActual(N_x + 1, N_y, 1)));
 }
 
-//PlaceHolder For temperature
-
 void Fluid_Sim_2D::boundaryConditionsPressure()
 {
 	for (int i = 1; i <= N_y; i++)
@@ -401,34 +403,32 @@ void Fluid_Sim_2D::boundaryConditionsDivergance()
 	setGradient(N_x + 1, N_y + 1,  0.5f * (getGradient(N_x, N_y + 1) + getGradient(N_x + 1, N_y)));
 }
 
-void Fluid_Sim_2D::addSourceData(float _dt, int var)
+void Fluid_Sim_2D::addSourceData(float _dt, int _var)
 {
 	for (int i = 0; i < width; i++) 
 	{
 		for (int j = 0; j < height; j++) 
 		{
-			set0(i, j, var,  getActual(i, j, var));
+			set0(i, j, _var,  getActual(i, j, _var));
 		}
 	}
 
 }
 
-
-
-float Fluid_Sim_2D::getGradient(int const & i, int const & j) const
+float Fluid_Sim_2D::getGradient(int const & _i, int const & _j) const
 {
-	if (i > 0 && i < width && j>0 && j < width)
+	if (_i > 0 && _i < width && _j>0 && _j < width)
 	{
-		return divergence[i + (j - 1)*width];
+		return divergence[_i + (_j - 1)*width];
 	}
 	else return 0;
 }
 
-void Fluid_Sim_2D::setGradient(int const & i, int const & j, float const & n)
+void Fluid_Sim_2D::setGradient(int const & _i, int const & _j, float const & _n)
 {
-	if (i > 0 && i < width && j>0 && j < width)
+	if (_i > 0 && _i < width && _j>0 && _j < width)
 	{
-		divergence[i + (j - 1)*width] = n;
+		divergence[_i + (_j - 1)*width] = _n;
 	}
 }
 
@@ -437,10 +437,9 @@ float Fluid_Sim_2D::getWall(int const & i, int const & j, int const & v) const
 	return 0.0f;
 }
 
-void Fluid_Sim_2D::setWall(int const & i, int const & j, int const & v, float const & n)
+void Fluid_Sim_2D::setWall(int const & _i, int const & _j, int const & _v, float const & _n)
 {
 }
-
 
 void Fluid_Sim_2D::velocityStep(float _dt)
 {
@@ -454,7 +453,6 @@ void Fluid_Sim_2D::velocityStep(float _dt)
 	projection(_dt);
 }
 
-
 void Fluid_Sim_2D::densityStep(float _dt)
 {
 	addSourceData(_dt, 4);
@@ -462,7 +460,6 @@ void Fluid_Sim_2D::densityStep(float _dt)
 	advection(_dt, 4);
 }
 
-//Credit Muzkaw
 sf::Color Fluid_Sim_2D::colorGradient(Image &color, float x)
 {
 	if (x>0.999) x = 0.999;
@@ -470,7 +467,6 @@ sf::Color Fluid_Sim_2D::colorGradient(Image &color, float x)
 	return color.getPixel((int)(x*color.getSize().x), 0);
 }
 
-// https://drive.google.com/file/d/0B2voedb-erQsUnFQeU5mMWVGOEU/view?usp=sharing
 sf::Sprite Fluid_Sim_2D::getPressureSprite()
 {
 	for (int i = 1; i < width - 1; i++)
@@ -491,8 +487,7 @@ sf::Sprite Fluid_Sim_2D::getPressureSprite()
 	return sprite;
 
 }
-//Credit Muzkaw
-// https://drive.google.com/file/d/0B2voedb-erQsUnFQeU5mMWVGOEU/view?usp=sharing
+
 sf::Sprite Fluid_Sim_2D::getTemperatureSprite()
 {
 	for (int i(1); i < width - 1; i++)
@@ -502,8 +497,7 @@ sf::Sprite Fluid_Sim_2D::getTemperatureSprite()
 	texture.loadFromImage(image);
 	return sprite;
 }
-//Credit Muzkaw
-// https://drive.google.com/file/d/0B2voedb-erQsUnFQeU5mMWVGOEU/view?usp=sharing
+
 sf::Sprite Fluid_Sim_2D::getSpeedSprite()
 {
 	for (int i(1); i < width - 1; i++)
@@ -513,8 +507,7 @@ sf::Sprite Fluid_Sim_2D::getSpeedSprite()
 	texture.loadFromImage(image);
 	return sprite;
 }
-//Credit Muzkaw
-// https://drive.google.com/file/d/0B2voedb-erQsUnFQeU5mMWVGOEU/view?usp=sharing
+
 sf::Sprite Fluid_Sim_2D::getDensitySprite()
 {
 	for (int i(1); i < width - 1; i++)
@@ -525,42 +518,36 @@ sf::Sprite Fluid_Sim_2D::getDensitySprite()
 	return sprite;
 }
 
-
-
-//Credit Muzkaw
-// https://drive.google.com/file/d/0B2voedb-erQsUnFQeU5mMWVGOEU/view?usp=sharing
-float Fluid_Sim_2D::getActual(int const& i, int const& j, int const& v) const
+float Fluid_Sim_2D::getActual(int const& _i, int const& _j, int const& _v) const
 {
-	if (i > 0 && i < width && j>0 && j < width)
+	if (_i > 0 && _i < width && _j>0 && _j < width)
 	{
-		return volume_data[i + (j - 1)*width].get_var(_v);
+		return volume_data[_i + (_j - 1)*width].get_var(_v);
 	}
 	else return 0;
 }
 
-
-void Fluid_Sim_2D::setActual(int const& i, int const& j, int const& v, float const& n)
+void Fluid_Sim_2D::setActual(int const& _i, int const& _j, int const& _v, float const& _n)
 {
-	if (i > 0 && i < width && j>0 && j < width)
+	if (_i > 0 && _i < width && _j>0 && _j < width)
 	{
-		volume_data[i + (j - 1)*width](v) = n;
+		volume_data[_i + (_j - 1)*width].set_var(_n, _v);
 	}
 }
 
-float Fluid_Sim_2D::get0(int const& i, int const& j, int const& v) const
+float Fluid_Sim_2D::get0(int const& _i, int const& _j, int const& _v) const
 {
-	if (i > 0 && i < width && j>0 && j < width)
+	if (_i > 0 && _i < width && _j>0 && _j < width)
 	{
-		return volume_data_0[i + (j - 1)*width].get_var(v);
+		return volume_data_0[_i + (_j - 1)*width].get_var(_v);
 	}
 	else return 0;
 }
 
-
-void Fluid_Sim_2D::set0(int const& i, int const& j, int const& v, float const& n)
+void Fluid_Sim_2D::set0(int const& _i, int const& _j, int const& _v, float const& _n)
 {
-	if (i > 0 && i < width && j>0 && j < width)
+	if (_i > 0 && _i < width && _j>0 && _j < width)
 	{
-		volume_data_0[i + (j - 1)*width].set_var(n, v);
+		volume_data_0[_i + (_j - 1)*width].set_var(_n, _v);
 	}
 }
