@@ -1,12 +1,13 @@
 #include "stdafx.h"
 #include "Fluid_Sim_2D.h"
 
-Fluid_Sim_2D::Fluid_Sim_2D(int _w, int _h, int _size ,int _scale) : width(_w), height(_h)
+Fluid_Sim_2D::Fluid_Sim_2D(int _w, int _h, int _scale) : width(_w), height(_h)
 {
 
 	N_x = width - 2; //Provide buffer
 	N_y = height - 2;  //Provide buffer
-	scale = _scale;
+
+	scale = float(_scale);
 	size = width * height;
 	for (int i = 0; i < size; i++)
 	{
@@ -17,11 +18,12 @@ Fluid_Sim_2D::Fluid_Sim_2D(int _w, int _h, int _size ,int _scale) : width(_w), h
 		walls.push_back(0.0f);
 		divergence.push_back(0.0f);
 	}
-	pressure_added_this_frame = false;
+
 	image.create(width, height , Color::Blue);
+	//image.create(25, 25, Color::Blue);
 	texture.loadFromImage(image);
 	sprite.setTexture(texture, true);
-	sprite.setScale(scale, scale);
+	sprite.setScale(scale / 5, scale / 5);
 	po_pressure_color.loadFromFile("debug_assets/pressure+.jpg");
 	neg_pressure_color.loadFromFile("debug_assets/pressure-.jpg");
 	temperature_color.loadFromFile("debug_assets/color.jpg");
@@ -132,16 +134,14 @@ void Fluid_Sim_2D::advection(float _dt, int _var)
 void Fluid_Sim_2D::projection(float _dt)
 {
 	int i, j, k;
-	float h = 1.0 / ((N_y + N_y) / 2);
+	
 	for (i = 1; i <= N_x; i++) {
 		for (j = 1; j <= N_y; j++) {
 			setGradient(i, j, -0.5f*h*(getActual(i + 1, j, 0) - getActual(i - 1, j, 0) +
-				getActual(i, j + 1, 1) - getActual(i, j - 1, 1)));
-			//if(!_pressure_added_this_frame)
+			getActual(i, j + 1, 1) - getActual(i, j - 1, 1)));
 			setActual(i,j, 2, 0);
 		}
 	}
-	pressure_added_this_frame = false; // why waste an if.
 	applyBoundary(5);
 	applyBoundary(2);
 	for (k = 0; k<5; k++) 
@@ -151,7 +151,7 @@ void Fluid_Sim_2D::projection(float _dt)
 			for (j = 1; j <= N_y; j++) 
 			{
 				setActual(i, j, 2, (getGradient(i, j) + getActual(i -1, j, 2) + getActual(i + 1, j, 2) +
-					getActual(i, j - 1, 2) + getActual(i, j + 1, 2)) / 4);
+				getActual(i, j - 1, 2) + getActual(i, j + 1, 2)) / 4);
 			}
 		}
 	applyBoundary(2);
@@ -170,46 +170,35 @@ void Fluid_Sim_2D::projection(float _dt)
 
 sf::Sprite Fluid_Sim_2D::getSpriteGeneral(int var)
 {
+	//sprite.setScale(1, 1);
 	switch (var)
 	{
 	default:
 		break;
 	case 0:
-		return getSpeedSprite();
+		getSpeedSprite();
 		break;
 	case 1:
-		return getPressureSprite();
+		getPressureSprite();
 		break;
 	case 2:
-		//PlaceHOLDER
-		return getDensitySprite();
+		getDensitySprite();
 		break;
 	}
+	//sprite.scale(scale, scale);
+	return sprite;
 }
 
 void Fluid_Sim_2D::addDensity(sf::Vector2i _input)
 {
-	for (int i = (_input.x - 20); i < (_input.x + 20); i++) {
-		for (int j = (_input.y - 20); j < (_input.y + 20); j++) {
+	for (int i = (_input.x - (20 / scale)); i < (_input.x + (20 / scale)); i++) {
+		for (int j = (_input.y - (20 / scale)); j < (_input.y + (20 / scale)); j++) {
 			if (i > 0 && i < width && j > 0 && j < height) 
 			{
 				float d = std::sqrt(std::pow(i - _input.x, 2) + std::pow(j - _input.y, 2));
-				if (d < 20 / 4) {
+				if (d < 4 / scale) {
 					setActual(i, j, 4, getActual(i, j, 4) + 5);
 				}
-			}
-		}
-	}
-}
-
-void Fluid_Sim_2D::addPressure(sf::Vector2i _input)
-{
-	for (int i = (_input.x - 5); i < (_input.x + 5); i++) {
-		for (int j = (_input.y - 5); j < (_input.y + 5); j++) {
-			if (i > 0 && i < width && j > 0 && j < height)
-			{
-					setActual(i, j, 2, getActual(i, j, 2) + 100.0f);
-					pressure_added_this_frame = true;
 			}
 		}
 	}
@@ -249,12 +238,32 @@ void Fluid_Sim_2D::addU(sf::Vector2i _input)
 
 void Fluid_Sim_2D::addVelocity(sf::Vector2i _input)
 {
+	//for (int i = (_input.x - 8); i < (_input.x + 8); i++) {
+	//	for (int j = (_input.y - 8); j < (_input.y + 8); j++) {
+	//		if (i > 0 && i < width && j > 0 && j < height)
+	//		{
+	//			float X = i - _input.x;
+	//			float Y = j - _input.y;
+	//			float d = std::sqrt(std::pow(i - _input.x, 2) + std::pow(j - _input.y, 2));
+	//			X /= d;
+	//			Y /= d;
+
+	//			X *= 10 / d;
+	//			Y *= 10 / d;
+	//			if (d < 2 /scale) 
+	//			{
+	//				setActual(i, j, 0, X);
+	//				setActual(i, j, 1, Y);
+	//			}
+	//		}
+	//	}
+	//}
 	for (int i = (_input.x - 8); i < (_input.x + 8); i++) {
 		for (int j = (_input.y - 8); j < (_input.y + 8); j++) {
 			if (i > 0 && i < width && j > 0 && j < height)
 			{
 				float d = std::sqrt(std::pow(i - _input.x, 2) + std::pow(j - _input.y, 2));
-				if (d < 8 / 4) 
+				if (d < 2 / scale)
 				{
 					setActual(i, j, 0, getActual(i, j, 0) + 1000000000.0f);
 					setActual(i, j, 1, getActual(i, j, 1) + 1000000000.0f);
@@ -467,7 +476,7 @@ sf::Color Fluid_Sim_2D::colorGradient(Image &color, float x)
 	return color.getPixel((int)(x*color.getSize().x), 0);
 }
 
-sf::Sprite Fluid_Sim_2D::getPressureSprite()
+void Fluid_Sim_2D::getPressureSprite()
 {
 	for (int i = 1; i < width - 1; i++)
 	{
@@ -484,38 +493,37 @@ sf::Sprite Fluid_Sim_2D::getPressureSprite()
 		}
 	}
 	texture.loadFromImage(image);
-	return sprite;
-
 }
 
-sf::Sprite Fluid_Sim_2D::getTemperatureSprite()
+void Fluid_Sim_2D::getTemperatureSprite()
 {
 	for (int i(1); i < width - 1; i++)
 		for (int j(1); j < height - 1; j++)
 			image.setPixel(i, j, colorGradient(temperature_color, getActual(i, j, 3) / scale));
 
 	texture.loadFromImage(image);
-	return sprite;
 }
 
-sf::Sprite Fluid_Sim_2D::getSpeedSprite()
+void Fluid_Sim_2D::getSpeedSprite()
 {
-	for (int i(1); i < width - 1; i++)
-		for (int j(1); j < height - 1; j++)
+	for (int i(1); i < width - 1; i++) 
+	{
+		for (int j(1); j < height - 1; j++) 
+		{
 			image.setPixel(i, j, colorGradient(speed_color, sqrt(pow(getActual(i, j, 0), 2) + pow(getActual(i, j, 1), 2)) / scale));
-
+		}
+	}
+	
 	texture.loadFromImage(image);
-	return sprite;
 }
 
-sf::Sprite Fluid_Sim_2D::getDensitySprite()
+void Fluid_Sim_2D::getDensitySprite()
 {
 	for (int i(1); i < width - 1; i++)
 		for (int j(1); j < height - 1; j++)
 			image.setPixel(i, j, colorGradient(density_color, getActual(i, j, 4)*1.0f));
 
 	texture.loadFromImage(image);
-	return sprite;
 }
 
 float Fluid_Sim_2D::getActual(int const& _i, int const& _j, int const& _v) const

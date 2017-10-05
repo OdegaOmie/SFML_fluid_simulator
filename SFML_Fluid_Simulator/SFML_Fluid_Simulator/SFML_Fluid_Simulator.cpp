@@ -26,34 +26,32 @@
 
 
 
-sf::Vector2i getCorinates2D(sf::Vector2f _input, float _cell_width, float _cell_heigth) {
-	int X = _input.x / _cell_width;
-	int Y = _input.y / _cell_heigth;
+sf::Vector2i getCorinates2D(sf::Vector2f _input, int _scale) {
+	int X = _input.x / _scale;
+	int Y = _input.y / _scale;
 	return sf::Vector2i(X, Y);
 }
 
 
 void run_2d() {
-	int sizeX = 500;
-	int sizeY = 500;
-	int scale = 2;
+	int sizeX = 25;
+	int sizeY = 25;
+	int scale = 5;
 	bool running = true;
 
-	float cell_width = (sizeX / (sizeX / scale));
-	float cell_heigth = (sizeY / (sizeY / scale));
 	// Create the main window 
-	sf::RenderWindow App(sf::VideoMode(sizeX, sizeY, 32), "SFML OpenGL");
+	sf::RenderWindow App(sf::VideoMode(sizeX * scale, sizeY * scale, 32), "SFML OpenGL");
 
 	// Create a clock for measuring time elapsed     
 	sf::Clock Clock;
 	//create a font
-	float dt = 0.00001;
+	float dt = 0.000000001;
 
-	int variable_shown = 0;
+	int variable_shown = 2;
 
-	Fluid_Sim_2D sim_2D = Fluid_Sim_2D(sizeX / scale, sizeY / scale, cell_width, scale);
+	Fluid_Sim_2D sim_2D = Fluid_Sim_2D(sizeX, sizeY, scale);
 	sf::Vector2f mousePos;
-
+	sf::Sprite drawSprite;
 	while (App.isOpen())
 	{
 		// Process events 
@@ -88,8 +86,8 @@ void run_2d() {
 		}
 
 
-		if (LMB) sim_2D.addDensity(getCorinates2D(mousePos, cell_width, cell_heigth));
-		if (RMB)sim_2D.addPressure(getCorinates2D(mousePos, cell_width, cell_heigth));
+		if (LMB) sim_2D.addDensity(getCorinates2D(mousePos, scale));
+		if (RMB)sim_2D.addVelocity(getCorinates2D(mousePos, scale));
 		if (R) sim_2D.reset();
 
 
@@ -97,10 +95,12 @@ void run_2d() {
 		if (running)
 		{
 			sim_2D.update(dt);
+			drawSprite = sim_2D.getSpriteGeneral(variable_shown);
+			drawSprite.scale(5, 5);
 		}
-		App.draw(sim_2D.getSpriteGeneral(variable_shown));
+
+		App.draw(drawSprite);
 		App.display();
-		std::cout << "LOOP" << std::endl;
 	}
 }
 

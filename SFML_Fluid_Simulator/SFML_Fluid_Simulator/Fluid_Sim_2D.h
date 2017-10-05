@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream> 
 #include <algorithm>
+#include <thread>
 
 using namespace sf;
 
@@ -50,6 +51,9 @@ private:
 	int width, height;
 
 	float size;
+	float h;
+
+	std::thread THREADS[4];
 
 	int N_x;
 	int N_y;
@@ -69,7 +73,7 @@ private:
 	Image image;
 	Texture texture;
 	Sprite sprite;
-	int scale;
+	float scale;
 
 	bool pressure_added_this_frame;
 
@@ -78,11 +82,10 @@ private:
 	float diffusion_coefficient_velocity;
 
 public:
-	Fluid_Sim_2D(int width, int height, int size, int scale);
+	Fluid_Sim_2D(int width, int height, int scale);
 
 
 	void addDensity(sf::Vector2i _input);
-	void addPressure(sf::Vector2i _input);
 	void addV(sf::Vector2i _input);
 	void addU(sf::Vector2i _input);
 	void addVelocity(sf::Vector2i _input);
@@ -113,10 +116,10 @@ public:
 	void setWall(int const& i, int const& j, int const& v, float const& n);
 
 
-	sf::Sprite getPressureSprite();
-	sf::Sprite getTemperatureSprite();
-	sf::Sprite getSpeedSprite();
-	sf::Sprite getDensitySprite();
+	void getPressureSprite();
+	void getTemperatureSprite();
+	void getSpeedSprite();
+	void getDensitySprite();
 
 	sf::Sprite getSpriteGeneral(int var);
 
